@@ -1,0 +1,245 @@
+// 学生管理页面
+<template>
+  <div class="all">
+    <div class="search">
+      <p class="p">根据姓名查找：</p>
+      <el-input v-model="input" placeholder="请输入内容查找"></el-input>
+      <el-button type="primary" class="searchBtn" @click="findByName(input)">
+        <i class="el-icon-search"></i>
+      </el-button>
+    </div>
+    <el-table :data="pagination.content" border>
+      <el-table-column prop="studentId" label="学号" width="150"></el-table-column>
+      <el-table-column prop="studentName" label="姓名" width="150"></el-table-column>
+      <el-table-column prop="pwd" label="密码" width="150"></el-table-column>
+      <el-table-column prop="institute" label="学院" width="200"></el-table-column>
+      <el-table-column prop="major" label="专业" width="200"></el-table-column>
+      <el-table-column prop="grade" label="年级" width="120"></el-table-column>
+      <el-table-column prop="clazz" label="班级" width="100"></el-table-column>
+      <el-table-column prop="sex" label="性别" width="100"></el-table-column>
+      <el-table-column prop="tel" label="联系方式" width="120"></el-table-column>
+      <el-table-column fixed="right" label="操作" width="180">
+        <template slot-scope="scope">
+          <el-button @click="checkGrade(scope.row.studentId)" type="primary" size="small">编辑</el-button>
+          <el-button @click="deleteById(scope.row.studentId)" type="danger" size="small">删除</el-button>
+        </template>
+      </el-table-column>
+    </el-table>
+    <el-pagination
+      @size-change="handleSizeChange"
+      @current-change="handleCurrentChange"
+      :current-page="pagination.current"
+      :page-sizes="[6, 10]"
+      :page-size="pagination.size"
+      layout="total, sizes, prev, pager, next, jumper"
+      :total="pagination.total"
+      class="page"
+    ></el-pagination>
+    <!-- 编辑对话框-->
+    <el-dialog title="编辑学生信息" :visible.sync="dialogVisible" width="30%" :before-close="handleClose">
+      <section class="update">
+        <el-form ref="form" :model="form" label-width="80px">
+          <el-form-item label="姓名">
+            <el-input v-model="form.studentName"></el-input>
+          </el-form-item>
+          <el-form-item label="学院">
+            <el-input v-model="form.institute"></el-input>
+          </el-form-item>
+          <el-form-item label="专业">
+            <el-input v-model="form.major"></el-input>
+          </el-form-item>
+          <el-form-item label="年级">
+            <el-select v-model="form.grade" placeholder="请选择">
+              <el-option v-for="item in grade" :key="item.value" :value="item.value"></el-option>
+            </el-select>
+          </el-form-item>
+          <el-form-item label="班级">
+            <el-select v-model="form.clazz" placeholder="请选择">
+              <el-option v-for="item in clazz" :key="item.value" :value="item.value"></el-option>
+            </el-select>
+          </el-form-item>
+          <el-form-item label="密码">
+            <el-input v-model="form.pwd"></el-input>
+          </el-form-item>
+          <el-form-item label="性别">
+            <el-select v-model="form.sex" placeholder="请选择">
+              <el-option v-for="item in sex" :key="item.value" :value="item.value"></el-option>
+            </el-select>
+          </el-form-item>
+          <el-form-item label="电话号码">
+            <el-input v-model="form.tel"></el-input>
+          </el-form-item>
+        </el-form>
+      </section>
+      <span slot="footer" class="dialog-footer">
+        <el-button @click="dialogVisible = false">取 消</el-button>
+        <el-button type="primary" @click="submit()">确 定</el-button>
+      </span>
+    </el-dialog>
+  </div>
+</template>
+
+<script>
+export default {
+  data() {
+    return {
+      pagination: {
+        //分页后的考试信息
+        current: 1, //当前页
+        total: null, //记录条数
+        size: 6, //每页条数
+        content: null
+      },
+      dialogVisible: false, //对话框
+      form: {}, //保存点击以后当前学生的信息
+      input: "",
+      grade: [
+        { value: 2012 },
+        { value: 2013 },
+        { value: 2014 },
+        { value: 2015 },
+        { value: 2016 },
+        { value: 2017 },
+        { value: 2018 },
+        { value: 2019 },
+        { value: 2020 }
+      ],
+      sex: [{ value: "男" }, { value: "女" }],
+      clazz: [
+        { value: 1 },
+        { value: 2 },
+        { value: 3 },
+        { value: 4 },
+        { value: 5 },
+        { value: 6 }
+      ]
+    };
+  },
+  created() {
+    this.getStudentInfo();
+  },
+  methods: {
+    getStudentInfo() {
+      //分页查询所有试卷信息
+      this.$axios(
+        `/api/students/${this.pagination.current - 1}/${this.pagination.size}`
+      )
+        .then(res => {
+          this.pagination.current = res.data.data.number + 1;
+          this.pagination.total = res.data.data.totalElements;
+          this.pagination.size = res.data.data.size;
+          this.pagination.content = res.data.data.content;
+        })
+        .catch(error => {});
+    },
+    //改变当前记录条数
+    handleSizeChange(val) {
+      this.pagination.size = val;
+      this.getStudentInfo();
+    },
+    //改变当前页码，重新发送请求
+    handleCurrentChange(val) {
+      this.pagination.current = val;
+      this.getStudentInfo();
+    },
+    checkGrade(studentId) {
+      //修改学生信息
+      this.dialogVisible = true;
+      this.$axios(`/api/student/${studentId}`).then(res => {
+        this.form = res.data.data;
+      });
+    },
+    findByName(text) {
+      var content = this.pagination.content;
+      var result = [];
+      for (var key in content) {
+        if (content[key].studentName.search(text) != -1) {
+          result.push(content[key]);
+        }
+      }
+      if (result.length == 0) {
+        alert("查无此人");
+      } else {
+        this.pagination.content = result;
+      }
+    },
+    deleteById(studentId) {
+      //删除当前学生
+      this.$confirm("确定删除当前学生吗？删除后无法恢复", "Warning", {
+        confirmButtonText: "确定删除",
+        cancelButtonText: "算了,留着吧",
+        type: "danger"
+      })
+        .then(() => {
+          //确认删除
+          this.$axios({
+            url: `/api/student/${studentId}`,
+            method: "delete"
+          }).then(res => {
+            this.getStudentInfo();
+          });
+        })
+        .catch(() => {});
+    },
+    submit() {
+      //提交更改
+      this.dialogVisible = false;
+      this.$axios({
+        url: "/api/student",
+        method: "put",
+        data: {
+          ...this.form
+        }
+      }).then(res => {
+        if (res.data.code == 200) {
+          this.$message({
+            message: "更新成功",
+            type: "success"
+          });
+        }
+        this.getStudentInfo();
+      });
+    },
+    handleClose(done) {
+      //关闭提醒
+      this.$confirm("确认关闭？")
+        .then(_ => {
+          done();
+        })
+        .catch(_ => {});
+    }
+  }
+};
+</script>
+<style lang="scss" scoped>
+.all {
+  padding: 0px 40px;
+  .page {
+    margin-top: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  .edit {
+    margin-left: 20px;
+  }
+  .el-table tr {
+    background-color: #dd5862 !important;
+  }
+}
+.el-table .warning-row {
+  background: #000 !important;
+}
+
+.el-table .success-row {
+  background: #dd5862;
+}
+.search {
+  width: 180px;
+  margin-bottom: 20px;
+}
+.searchBtn {
+  position: absolute;
+  margin-left: 20px;
+}
+</style>
